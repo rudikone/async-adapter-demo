@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: async-adapter-demo
+  kafka:
+    bootstrap-servers: "localhost:9092"
+    consumer:
+      group-id: "myGroup"
+      value-deserializer: "org.springframework.kafka.support.serializer.StringDeserializer"
+    producer:
+      value-serializer: "org.springframework.kafka.support.serializer.DoubleSerializer"
+  spring:
+    datasource:
+      driver-class-name: org.postgresql.Driver
+      username: user
+      password: pass
+      url: jdbc:postgresql://localhost:5432/customers
