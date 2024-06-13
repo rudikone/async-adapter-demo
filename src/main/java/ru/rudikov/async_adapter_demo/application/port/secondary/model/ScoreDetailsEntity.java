@@ -1,22 +1,25 @@
 package ru.rudikov.async_adapter_demo.application.port.secondary.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
-import org.springframework.data.annotation.Id;
+import jakarta.persistence.Id;
 
 import java.util.Objects;
 
 import static jakarta.persistence.GenerationType.IDENTITY;
 
-@Entity
+@Entity(name = "score_details")
 public class ScoreDetailsEntity {
 
     @Id
     @GeneratedValue(strategy = IDENTITY)
     private Long id;
 
+    @Column(name = "subject")
     private String subject;
 
+    @Column(name = "avg_score")
     private Double avgScore;
 
     public ScoreDetailsEntity() {
