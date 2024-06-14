@@ -21,11 +21,11 @@ public class ExampleProducer {
 
     public void sendMessage(Double message) {
         CompletableFuture<SendResult<String, Double>> future = kafkaTemplate.send("response-topic", message);
-        future.whenComplete((_, ex) -> {
+        future.whenComplete((result, ex) -> {
             if (ex == null) {
-                logger.info("Sent message=[" + message + "]");
+                logger.info("Sent message=[{}]", message);
             } else {
-                logger.error("Unable to send message=[" + message + "] due to: " + ex.getMessage());
+                logger.error("Unable to send message=[{}] due to: {}", message, ex.getMessage());
             }
         });
     }
