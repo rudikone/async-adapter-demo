@@ -21,14 +21,14 @@ public class ExampleConsumer {
     }
 
     @KafkaListener(topics = "request-topic")
-    public void listen(String request) {
-        logger.info("Received studentId: {}", request);
+    public void listen(String studentId) {
+        logger.info("Received studentId: {}", studentId);
 
         try {
-            var score = scoringPort.getScore(request);
-            producer.sendMessage(score);
+            var score = scoringPort.getScore(studentId);
+            producer.sendMessage(studentId, score);
         } catch (Throwable throwable) {
-            logger.error("Error processing request with studentId: {}", request, throwable);
+            logger.error("Error processing request with studentId: {}", studentId, throwable);
         }
     }
 }

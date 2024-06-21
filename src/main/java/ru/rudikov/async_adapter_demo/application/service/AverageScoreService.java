@@ -33,7 +33,7 @@ public class AverageScoreService implements ScoringPort {
             scores.add(myExecutor.submit(() -> {
                 var avgScore = port.getAverageScore(studentId);
                 var subject = port.getSubjectType().name();
-                scoreDetailsPort.save(subject, avgScore);
+                scoreDetailsPort.save(studentId, subject, avgScore);
                 return avgScore;
             }));
         }

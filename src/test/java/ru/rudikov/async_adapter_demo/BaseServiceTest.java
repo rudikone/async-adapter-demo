@@ -1,0 +1,29 @@
+package ru.rudikov.async_adapter_demo;
+
+
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+
+@SpringBootTest
+@Testcontainers
+public class BaseServiceTest {
+
+    @Container
+    @ServiceConnection
+    protected static PostgreSQLContainer<?> postgreSQLContainer =
+            new PostgreSQLContainer<>("postgres:15.2")
+                    .withDatabaseName("async_adapter")
+                    .withUsername("app")
+                    .withPassword("pass");
+
+    @Container
+    @ServiceConnection
+    protected final static KafkaContainer kafkaContainer = new KafkaContainer(
+            DockerImageName.parse("confluentinc/cp-kafka:7.3.3")
+    );
+}

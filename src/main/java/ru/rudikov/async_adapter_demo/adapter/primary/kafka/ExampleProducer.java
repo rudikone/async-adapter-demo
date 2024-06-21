@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
+import ru.rudikov.async_adapter_demo.adapter.primary.kafka.model.ScoreResult;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -13,14 +14,15 @@ public class ExampleProducer {
 
     Logger logger = LoggerFactory.getLogger(ExampleProducer.class);
 
-    private final KafkaTemplate<String, Double> kafkaTemplate;
+    private final KafkaTemplate<String, ScoreResult> kafkaTemplate;
 
-    public ExampleProducer(KafkaTemplate<String, Double> kafkaTemplate) {
+    public ExampleProducer(KafkaTemplate<String, ScoreResult> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void sendMessage(Double message) {
-        CompletableFuture<SendResult<String, Double>> future = kafkaTemplate.send("response-topic", message);
+    public void sendMessage(String studentId, Double score) {
+        var message = new ScoreResult(studentId, score);
+        CompletableFuture<SendResult<String, ScoreResult>> future = kafkaTemplate.send("response-topic", message);
         future.whenComplete((result, ex) -> {
             if (ex == null) {
                 logger.info("Sent message=[{}]", message);

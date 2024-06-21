@@ -4,51 +4,31 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.SpyBean;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import ru.rudikov.async_adapter_demo.adapter.primary.kafka.ExampleProducer;
 import ru.rudikov.async_adapter_demo.application.port.secondary.ScoreDetailsPort;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 
-@SpringBootTest
-@Testcontainers
-public class ServiceTestCountDownLatch {
+public class CountDownLatchWithSpyBeanTest extends BaseServiceTest {
 
     @Autowired
     private ScoreDetailsPort scoreDetailsPort;
 
     @SpyBean
     private ExampleProducer exampleProducer;
-
-    @Container
-    @ServiceConnection
-    private static PostgreSQLContainer<?> postgreSQLContainer =
-            new PostgreSQLContainer<>("postgres:15.2")
-                    .withDatabaseName("async_adapter")
-                    .withUsername("app")
-                    .withPassword("pass");
-
-    @Container
-    @ServiceConnection
-    private final static KafkaContainer kafkaContainer = new KafkaContainer(
-            DockerImageName.parse("confluentinc/cp-kafka:7.3.3")
-    );
 
     // имитация клиентского продюсера
     private static KafkaTemplate<String, String> clientProducer;
@@ -69,19 +49,30 @@ public class ServiceTestCountDownLatch {
 
         // как только вызывается response producer, вызываем countDown(), чтобы пустить тестовый поток к блоку проверок
         // тем самым гарантируем, что проверка начнется после того, как отправлен ответ клиенту
-        doAnswer(
-                invocation -> {
-                    countDownLatch.countDown();
-                    return invocation.callRealMethod();
-                }
-        ).when(exampleProducer).sendMessage(anyDouble());
+        doAnswer(invocation -> {
+            countDownLatch.countDown();
+            return invocation.callRealMethod();
+        }).when(exampleProducer).sendMessage(anyString(), anyDouble());
 
-        clientProducer.send("request-topic", "key", "123");
+        // имитация клиентского запроса
+        var studentId = "123";
+        clientProducer.send("request-topic", "key", studentId);
 
         // блочим тестовый поток до тех пор, пока не вызван countDown()
         countDownLatch.await(15, TimeUnit.SECONDS);
-        var details = scoreDetailsPort.findAll();
 
-        assertEquals(2, details.size());
+        var details = scoreDetailsPort.findAllByStudentId(studentId);
+        ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Double> doubleArgumentCaptor = ArgumentCaptor.forClass(Double.class);
+        Mockito.verify(exampleProducer).sendMessage(stringArgumentCaptor.capture(), doubleArgumentCaptor.capture());
+        Double expectedScore = doubleArgumentCaptor.getValue();
+        String expectedStudentId = stringArgumentCaptor.getValue();
+
+        assertAll(
+                "проверка артефактов БД и ответа клиенту",
+                () -> assertEquals(2, details.size()),
+                () -> assertEquals(studentId, expectedStudentId),
+                () -> assertNotNull(expectedScore)
+        );
     }
 }

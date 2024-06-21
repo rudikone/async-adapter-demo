@@ -8,7 +8,7 @@ spring:
       bootstrap-servers: localhost:9092
       auto-offset-reset: earliest
     producer:
-      value-serializer: org.apache.kafka.common.serialization.DoubleSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
   datasource:
     driver-class-name: org.postgresql.Driver
     username: app
@@ -20,3 +20,10 @@ spring:
   sql:
     init:
       mode: always
+
+logging:
+  level:
+    root: INFO
+    ru.rudikov.async_adapter_demo: DEBUG
+#    org.hibernate.SQL: DEBUG
+#    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

@@ -16,6 +16,9 @@ public class ScoreDetailsEntity {
     @GeneratedValue(strategy = IDENTITY)
     private Long id;
 
+    @Column(name = "student_id")
+    private String studentId;
+
     @Column(name = "subject")
     private String subject;
 
@@ -25,7 +28,8 @@ public class ScoreDetailsEntity {
     public ScoreDetailsEntity() {
     }
 
-    public ScoreDetailsEntity(String subject, Double avgScore) {
+    public ScoreDetailsEntity(String studentId, String subject, Double avgScore) {
+        this.studentId = studentId;
         this.subject = subject;
         this.avgScore = avgScore;
     }
@@ -36,6 +40,14 @@ public class ScoreDetailsEntity {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getStudentId() {
+        return studentId;
+    }
+
+    public void setStudentId(String studentId) {
+        this.studentId = studentId;
     }
 
     public String getSubject() {
@@ -59,11 +71,21 @@ public class ScoreDetailsEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ScoreDetailsEntity that = (ScoreDetailsEntity) o;
-        return Objects.equals(id, that.id) && Objects.equals(subject, that.subject) && Objects.equals(avgScore, that.avgScore);
+        return Objects.equals(id, that.id) && Objects.equals(studentId, that.studentId) && Objects.equals(subject, that.subject) && Objects.equals(avgScore, that.avgScore);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, subject, avgScore);
+        return Objects.hash(id, studentId, subject, avgScore);
+    }
+
+    @Override
+    public String toString() {
+        return "ScoreDetailsEntity{" +
+                "id=" + id +
+                ", studentId='" + studentId + '\'' +
+                ", subject='" + subject + '\'' +
+                ", avgScore=" + avgScore +
+                '}';
     }
 }
