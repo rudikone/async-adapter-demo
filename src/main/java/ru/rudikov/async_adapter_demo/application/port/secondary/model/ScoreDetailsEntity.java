@@ -70,7 +70,7 @@ public class ScoreDetailsEntity {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ScoreDetailsEntity that = (ScoreDetailsEntity) o;
+        final ScoreDetailsEntity that = (ScoreDetailsEntity) o;
         return Objects.equals(id, that.id) && Objects.equals(studentId, that.studentId) && Objects.equals(subject, that.subject) && Objects.equals(avgScore, that.avgScore);
     }
 

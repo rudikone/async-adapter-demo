@@ -6,7 +6,6 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import ru.rudikov.async_adapter_demo.application.port.primary.ScoringPort;
 
-
 @Service
 public class ExampleConsumer {
 
@@ -25,7 +24,7 @@ public class ExampleConsumer {
         logger.info("Received studentId: {}", studentId);
 
         try {
-            var score = scoringPort.getScore(studentId);
+            final var score = scoringPort.getScore(studentId);
             producer.sendMessage(studentId, score);
         } catch (Throwable throwable) {
             logger.error("Error processing request with studentId: {}", studentId, throwable);

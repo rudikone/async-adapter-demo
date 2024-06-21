@@ -10,7 +10,7 @@ import java.util.List;
 public interface ScoreDetailsPort extends JpaRepository<ScoreDetailsEntity, Long> {
 
     default void save(String studentId, String subject, Double avgScore) {
-        var entity = new ScoreDetailsEntity(studentId, subject, avgScore);
+        final var entity = new ScoreDetailsEntity(studentId, subject, avgScore);
         this.save(entity);
     }
 

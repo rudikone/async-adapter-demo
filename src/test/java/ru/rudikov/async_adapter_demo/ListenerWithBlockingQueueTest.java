@@ -24,13 +24,16 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class ListenerWithBlockingQueueTest extends BaseServiceTest {
-
-    @Autowired
-    private ScoreDetailsPort scoreDetailsPort;
 
     // имитация клиентского продюсера
     private static KafkaTemplate<String, String> clientProducer;
@@ -38,21 +41,24 @@ public class ListenerWithBlockingQueueTest extends BaseServiceTest {
     // имитация клиентского консюмера
     private static KafkaMessageListenerContainer<String, ScoreResult> clientConsumer;
     // блокирующая очередь с размером 1, чтобы гарантировать последовательную обработку сообщений во всех тестах
-    private static final BlockingQueue<ConsumerRecord<String, ScoreResult>> clientConsumerRecords =
+    private static final BlockingQueue<ConsumerRecord<String, ScoreResult>> CLIENT_CONSUMER_RECORDS =
             new LinkedBlockingQueue<>(1);
+
+    @Autowired
+    private ScoreDetailsPort scoreDetailsPort;
 
     @BeforeAll
     static void setUp() {
         // создаем имитацию клиентского продюсера
-        var clientProducerProps = KafkaTestUtils.producerProps(kafkaContainer.getBootstrapServers());
+        final var clientProducerProps = KafkaTestUtils.producerProps(KAFKA_CONTAINER.getBootstrapServers());
         clientProducerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         clientProducerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 
         clientProducer = new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(clientProducerProps));
 
         // создаем имитацию клиентского консюмера
-        var clientConsumerProps = new HashMap<String, Object>();
-        clientConsumerProps.put(BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers());
+        final var clientConsumerProps = new HashMap<String, Object>();
+        clientConsumerProps.put(BOOTSTRAP_SERVERS_CONFIG, KAFKA_CONTAINER.getBootstrapServers());
         clientConsumerProps.put(GROUP_ID_CONFIG, "consumer");
         clientConsumerProps.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
         clientConsumerProps.put(ALLOW_AUTO_CREATE_TOPICS_CONFIG, "false");
@@ -60,23 +66,23 @@ public class ListenerWithBlockingQueueTest extends BaseServiceTest {
         clientConsumerProps.put(AUTO_COMMIT_INTERVAL_MS_CONFIG, "2000"); // осознанно неудачное значение
         clientConsumerProps.put(MAX_POLL_INTERVAL_MS_CONFIG, "100"); // осознанно неудачное значение
 
-        var deserializer = new JsonDeserializer<ScoreResult>();
+        final var deserializer = new JsonDeserializer<ScoreResult>();
         deserializer.addTrustedPackages("*");
-        var clientConsumerFactory = new DefaultKafkaConsumerFactory<>(
+        final var clientConsumerFactory = new DefaultKafkaConsumerFactory<>(
                 clientConsumerProps,
                 new StringDeserializer(),
                 deserializer
         );
-        var clientConsumerContainerProperties = new ContainerProperties("response-topic");
+        final var clientConsumerContainerProperties = new ContainerProperties("response-topic");
 
         clientConsumer = new KafkaMessageListenerContainer<>(clientConsumerFactory, clientConsumerContainerProperties);
         // задаем поведение клиентского консюмера
         clientConsumer.setupMessageListener(
-                (MessageListener<String, ScoreResult>) (data) -> {
+                (MessageListener<String, ScoreResult>) data -> {
                     try {
                         // поток, обслуживающий клиентский консюмер будет заблокирован, пока в блокирующей очереди
                         // есть хотя бы один необработанный ивент
-                        clientConsumerRecords.put(data);
+                        CLIENT_CONSUMER_RECORDS.put(data);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
@@ -93,72 +99,76 @@ public class ListenerWithBlockingQueueTest extends BaseServiceTest {
     @Test
     void example1() throws InterruptedException {
         // имитация клиентского запроса
-        var studentId = "123";
+        final var studentId = "123";
         clientProducer.send("request-topic", "key", studentId);
 
         // блочим тестовый поток до тех пор, пока клиентский консюмер не получит сообщение
-        var response = clientConsumerRecords.poll(15, TimeUnit.SECONDS);
-        var details = scoreDetailsPort.findAllByStudentId(studentId);
+        final var response = CLIENT_CONSUMER_RECORDS.poll(15, TimeUnit.SECONDS);
+        final var details = scoreDetailsPort.findAllByStudentId(studentId);
 
-        assertAll(
-                "проверка артефактов БД и ответа клиенту",
-                () -> assertEquals(2, details.size()),
-                () -> assertEquals(studentId, response.value().studentId()),
-                () -> assertNotNull(response.value().avgScore())
-        );
+        assertThat(response.value())
+                .as("проверка ответа клиенту")
+                .satisfies(value -> {
+                    assertThat(value.studentId()).isEqualTo(studentId);
+                    assertThat(value.avgScore()).isNotNull();
+                });
+        assertThat(details).as("проверка артефактов БД").hasSize(2);
     }
 
     @Test
     void example2() throws InterruptedException {
         // имитация клиентского запроса
-        var studentId = "1234";
+        final var studentId = "1234";
         clientProducer.send("request-topic", "key", studentId);
 
         // блочим тестовый поток до тех пор, пока клиентский консюмер не получит сообщение
-        var response = clientConsumerRecords.poll(15, TimeUnit.SECONDS);
-        var details = scoreDetailsPort.findAllByStudentId(studentId);
+        final var response = CLIENT_CONSUMER_RECORDS.poll(15, TimeUnit.SECONDS);
+        final var details = scoreDetailsPort.findAllByStudentId(studentId);
 
-        assertAll(
-                "проверка артефактов БД и ответа клиенту",
-                () -> assertEquals(2, details.size()),
-                () -> assertEquals(studentId, response.value().studentId()),
-                () -> assertNotNull(response.value().avgScore())
-        );
+        assertThat(response.value())
+                .as("проверка ответа клиенту")
+                .satisfies(value -> {
+                    assertThat(value.studentId()).isEqualTo(studentId);
+                    assertThat(value.avgScore()).isNotNull();
+                });
+        assertThat(details).as("проверка артефактов БД").hasSize(2);
     }
 
     @Test
     void example3() throws InterruptedException {
         // имитация клиентского запроса
-        var studentId = "1235";
+        final var studentId = "1235";
         clientProducer.send("request-topic", "key", studentId);
 
         // блочим тестовый поток до тех пор, пока клиентский консюмер не получит сообщение
-        var response = clientConsumerRecords.poll(15, TimeUnit.SECONDS);
-        var details = scoreDetailsPort.findAllByStudentId(studentId);
+        final var response = CLIENT_CONSUMER_RECORDS.poll(15, TimeUnit.SECONDS);
+        final var details = scoreDetailsPort.findAllByStudentId(studentId);
 
-        assertAll(
-                "проверка артефактов БД и ответа клиенту",
-                () -> assertEquals(2, details.size()),
-                () -> assertEquals(studentId, response.value().studentId()),
-                () -> assertNotNull(response.value().avgScore())
-        );
+        assertThat(response.value())
+                .as("проверка ответа клиенту")
+                .satisfies(value -> {
+                    assertThat(value.studentId()).isEqualTo(studentId);
+                    assertThat(value.avgScore()).isNotNull();
+                });
+        assertThat(details).as("проверка артефактов БД").hasSize(2);
     }
 
     @Test
     void example4() throws InterruptedException {
         // имитация клиентского запроса
-        var studentId = "1236";
+        final var studentId = "1236";
         clientProducer.send("request-topic", "key", studentId);
 
         // блочим тестовый поток до тех пор, пока клиентский консюмер не получит сообщение
-        var response = clientConsumerRecords.poll(15, TimeUnit.SECONDS);
-        var details = scoreDetailsPort.findAllByStudentId(studentId);
+        final var response = CLIENT_CONSUMER_RECORDS.poll(15, TimeUnit.SECONDS);
+        final var details = scoreDetailsPort.findAllByStudentId(studentId);
 
-        assertAll(
-                "проверка артефактов БД и ответа клиенту",
-                () -> assertEquals(2, details.size()),
-                () -> assertEquals(studentId, response.value().studentId()),
-                () -> assertNotNull(response.value().avgScore())
-        );
+        assertThat(response.value())
+                .as("проверка ответа клиенту")
+                .satisfies(value -> {
+                    assertThat(value.studentId()).isEqualTo(studentId);
+                    assertThat(value.avgScore()).isNotNull();
+                });
+        assertThat(details).as("проверка артефактов БД").hasSize(2);
     }
 }

@@ -2,6 +2,8 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.3.0'
 	id 'io.spring.dependency-management' version '1.1.5'
+	id 'checkstyle'
+	id 'pmd'
 }
 
 group = 'ru.rudikov'
@@ -34,4 +36,28 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	dependsOn checkstyleMain, checkstyleTest, pmdMain, pmdTest
+}
+
+checkstyle {
+	toolVersion '10.3.1'
+	configFile file("config/checkstyle/checkstyle.xml")
+	ignoreFailures = false
+	maxWarnings = 0
+	maxErrors = 0
+}
+
+checkstyleMain {
+	source ='src/main/java'
+}
+
+checkstyleTest {
+	source ='src/test/java'
+}
+
+pmd {
+	consoleOutput = true
+	toolVersion = "6.47.0"
+	ruleSetFiles = files("config/pmd/pmd.xml") // Исключения только через внешний файл
+	ruleSets = []
 }

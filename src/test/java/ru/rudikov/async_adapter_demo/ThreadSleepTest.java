@@ -10,21 +10,20 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import ru.rudikov.async_adapter_demo.application.port.secondary.ScoreDetailsPort;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class ThreadSleepTest extends BaseServiceTest {
-
-    @Autowired
-    private ScoreDetailsPort scoreDetailsPort;
 
     // имитация клиентского продюсера
     private static KafkaTemplate<String, String> clientProducer;
 
+    @Autowired
+    private ScoreDetailsPort scoreDetailsPort;
+
     @BeforeAll
     static void setUp() {
         // создаем имитацию клиентского продюсера
-        var clientProducerProps = KafkaTestUtils.producerProps(kafkaContainer.getBootstrapServers());
+        final var clientProducerProps = KafkaTestUtils.producerProps(KAFKA_CONTAINER.getBootstrapServers());
         clientProducerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         clientProducerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 
@@ -40,7 +39,7 @@ public class ThreadSleepTest extends BaseServiceTest {
         Thread.sleep(15_000);
 
         // проверяем артефакты БД
-        var details = scoreDetailsPort.findAll();
-        assertEquals(2, details.size());
+        final var details = scoreDetailsPort.findAll();
+        assertThat(details).as("проверка артефактов БД").hasSize(2);
     }
 }

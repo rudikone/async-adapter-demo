@@ -3,11 +3,8 @@ package ru.rudikov.async_adapter_demo.adapter.primary.kafka;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 import ru.rudikov.async_adapter_demo.adapter.primary.kafka.model.ScoreResult;
-
-import java.util.concurrent.CompletableFuture;
 
 @Service
 public class ExampleProducer {
@@ -21,8 +18,8 @@ public class ExampleProducer {
     }
 
     public void sendMessage(String studentId, Double score) {
-        var message = new ScoreResult(studentId, score);
-        CompletableFuture<SendResult<String, ScoreResult>> future = kafkaTemplate.send("response-topic", message);
+        final var message = new ScoreResult(studentId, score);
+        final var future = kafkaTemplate.send("response-topic", message);
         future.whenComplete((result, ex) -> {
             if (ex == null) {
                 logger.info("Sent message=[{}]", message);

@@ -27,12 +27,12 @@ public class AverageScoreService implements ScoringPort {
 
     @Override
     public Double getScore(String studentId) {
-        List<Future<Double>> scores = new ArrayList<>();
+        final List<Future<Double>> scores = new ArrayList<>();
 
         for (SubjectPort port : ports) {
             scores.add(myExecutor.submit(() -> {
-                var avgScore = port.getAverageScore(studentId);
-                var subject = port.getSubjectType().name();
+                final var avgScore = port.getAverageScore(studentId);
+                final var subject = port.getSubjectType().name();
                 scoreDetailsPort.save(studentId, subject, avgScore);
                 return avgScore;
             }));
