@@ -2,7 +2,7 @@
 
 Подробнее читай [статью](https://habr.com/ru/articles/824594/) на Хабр
 
-Для локального запуска необходимо выполнить docker-compose up в папке docker. См. [docker-compose](docker/docker-compose.yaml)
+Для локального запуска необходимо выполнить docker-compose up в папке docker. См. [docker-compose](docker/docker-compose.yml)
 
 ## Тесты
 
